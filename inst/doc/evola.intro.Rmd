@@ -1,0 +1,329 @@
+---
+title: "Genetic algorithm using the evola package"
+author: "Giovanny Covarrubias-Pazaran"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Genetic algorithm using the evola package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The evola package is nice wrapper of the AlphaSimR package that enables the use of the evolutionary algorithm (EA) to solve complex questions in a simple manner.
+
+The vignettes aim to provide several examples in how to use the evola package under different optimization scenarios. We will spend the rest of the space providing examples for: 
+
+1) Optimizing the selection of one feature with a constraint in other
+2) Obtaining a subsample of a population to maximize a feature while constraining the relationship between possibilities
+  2a) best parents for the next generation
+  2b) best crosses of the next generation
+3) Optimizing a subsample of size N to be representative
+  3a) Of its own
+  3b) For another sample
+4) How to specify constraints:
+  4a) gender
+  4b) number of times a parent should be used
+5) How to optimize the number of progeny to produce per cross
+
+Because of CRAN requirements I will only run few generations but please when you run your analysis let it run for many generations.
+
+### 1) Optimizing the selection of one feature with a constraint in other
+
+The example presented here is a list of gems (Color) that have different weights in Kg (Weight) and a given value (Value). 
+
+```{r setup, include=FALSE} 
+library(evola)
+```
+
+```{r}
+set.seed(1)
+# Data
+Gems <- data.frame(
+  Color = c("Red", "Blue", "Purple", "Orange",
+            "Green", "Pink", "White", "Black", 
+            "Yellow"),
+  Weight = round(runif(9,0.5,5),2),
+  Value = round(abs(rnorm(9,0,5))+0.5,2)
+)
+head(Gems)
+```
+
+The task to optimize here is to be able to pick in your bag all the possible gems that maximize the value with the contraint that your bag would break after 10Kg. In the evolafit function this would be specified as follows:
+
+```{r}
+# Task: Gem selection. 
+# Aim: Get highest combined value.
+# Restriction: Max weight of the gem combined = 10. 
+res0<-evolafit(cbind(Weight,Value)~Color, dt= Gems,
+               # constraints: if greater than this ignore
+               constraintsUB = c(10,Inf), 
+               # constraints: if smaller than this ignore
+               constraintsLB= c(-Inf,-Inf), 
+               # weight the traits for the selection
+               traitWeight = c(0,1), 
+               # population parameters
+               nCrosses = 100, nProgeny = 20, recombGens = 1, 
+               # coancestry parameters
+               A=NULL, lambda=c(0,0), nQTLperInd = 1, 
+               # selection parameters
+               propSelBetween = .9, propSelWithin =0.9, 
+               nGenerations = 30, verbose = FALSE
+) 
+```
+
+Noticed that the formula cbind(Weight,Value)~Color specified the traits to be considered in the optimization problem are specified in the left side of the formula whereas the right side of the formula specifies the term corresponding to the genes that will form the 'genome' of the solution. Each trait in the formula requires a value for the contraints, weights in the fitness function (i.e., selection index) and lambda (weight for group relationship between the genes in the genome). The rest of the parameters are the parameters controling the evolution of the population of solutions.
+
+When looking at the results of the evolution we can observe that the best solution for the traits under the contraints can be extracted with the bestSol() function.
+
+```{r}
+best=bestSol(res0)[2]; best # best solution for trait 1
+res0$M[best,]
+xa = res0$M[best,] %*% as.matrix(Gems[,c("Weight","Value")]); xa
+```
+
+The best selection of Gems was the one one found in the M element of the resulting object.
+
+### 2) Obtaining subsample of a population to maximize a feature while constraining the relationship between possibilities
+
+#### 2a) Best parents for the next generation
+
+One situation that occurs in plant and animal breeding is the so called 'optimal contribution' problem where we want to pick a set of parents that can maximize the gain while managing genetic variance as much as possible. In the following example we take a population of 363 possible parents and pick the best 20 while conserving genetic variance.
+
+```{r, fig.show='hold'}
+data(DT_cpdata)
+DT <- DT_cpdata
+head(DT)
+```
+
+Our surrogate of fitness will be the Yield trait and we will have a second trait to control the number of individuals we can select. We will set a contraint for the occurrence (occ) trait to 20 but the only trait contributing to fitness will be Yield (traitWeight parameter). 
+
+```{r, fig.show='hold'}
+# get best 20 individuals weighting variance by 0.5
+res<-evolafit(cbind(Yield, occ)~id, dt= DT, 
+              # constraints: if sum is greater than this ignore 
+              constraintsUB = c(Inf,20), 
+              # constraints: if sum is smaller than this ignore
+              constraintsLB= c(-Inf,-Inf), 
+              # weight the traits for the selection
+              traitWeight = c(1,0), 
+              # population parameters
+              nCrosses = 100, nProgeny = 10, 
+              # coancestry parameters
+              A=A, lambda=c(0.5,0), nQTLperInd = 2, 
+              # selection parameters
+              propSelBetween = 0.5, propSelWithin =0.5, 
+              nGenerations = 20, verbose=FALSE) 
+```
+
+We then use the bestSol() function to extract the solution that maximizes our fitness function and constraints.
+
+```{r, fig.show='hold'}
+best = bestSol(res)[1];
+sum(res$M[best,]) # total # of inds selected
+```
+
+We can use the pmonitor() function to see if convergence was achieved between the best and teh average solutions.
+
+```{r, fig.show='hold'}
+pmonitor(res)
+plot(DT$Yield, col=as.factor(res$M[best,]), 
+     pch=(res$M[best,]*19)+1)
+
+```
+
+#### 2b) Obtaining optimal N crosses from a population for a given feature
+
+A variation of the same problem is when we want to pick the best crosses instead of the best parents to directly find the optimal solution for a crossing block. In the following example we use a dataset of crosses with marker and phenotype information to show how to optimize this problem.
+
+```{r}
+data(DT_technow)
+DT <- DT_technow
+DT$occ <- 1; DT$occ[1]=0
+M <- M_technow
+A <- A.mat(M)
+head(DT)
+```
+
+The way to specify this problem is exactly the same than with the optimization of parents but the input information is at the level of predicted crosses instead of individuals.
+
+```{r}
+# run the genetic algorithm
+  res<-evolafit(formula = c(GY, occ)~hy, dt= DT, 
+                # constraints: if sum is greater than this ignore
+                constraintsUB = c(Inf,100), 
+                # constraints: if sum is smaller than this ignore
+                constraintsLB= c(-Inf,-Inf),
+                # weight the traits for the selection
+                traitWeight = c(1,0), 
+                # population parameters
+                nCrosses = 100, nProgeny = 10, 
+                # coancestry parameters
+                A=A, lambda=c(0.3,0), nQTLperInd = 100, 
+                # selection parameters
+                propSelBetween = 0.9, propSelWithin =0.9, 
+                nGenerations = 10, verbose=FALSE) 
+best = bestSol(res)[1]
+sum(res$M[best,]) # total # of inds selected
+```
+
+You can use the pmonitor() or pareto() functions to see the evolution of the solution and see the performance of the solution selected.
+
+```{r}
+pmonitor(res)
+plot(DT$GY, col=as.factor(res$M[best,]), 
+       pch=(res$M[best,]*19)+1)
+```
+
+
+### 3) Optimizing a subsample of size N to be representative
+
+One particular case when we want to pick a representative subsample is when we don't have the resources to test everything (e.g., in the field/farm). In this example we use the information from 599 wheat lines to pick a subsample that maximizes the prediction accuracy for the entire sample. We start loading the data, in particular the phenotypes (DT) and the pedigree relationship matrix (A).
+
+```{r}
+data(DT_wheat)
+DT <- as.data.frame(DT_wheat)
+DT$id <- rownames(DT) # IDs
+DT$occ <- 1; DT$occ[1]=0 # to track occurrences
+DT$dummy <- 1; DT$dummy[1]=0 # dummy trait
+# if genomic
+# GT <- GT_wheat + 1; rownames(GT) <- rownames(DT)
+# A <-  GT%*%t(GT)
+# A <- A/mean(diag(A))
+# if pedigree
+A <- A_wheat
+```
+
+Now in order to pick a structured sample we will do a PCA and pick the cluster number 3 to be a subset to predict later (vp), while we will focus in rest of the population as candidates for the training set (tp).
+
+```{r}
+##Perform eigenvalue decomposition for clustering
+##And select cluster 5 as target set to predict
+pcNum=25
+svdWheat <- svd(A, nu = pcNum, nv = pcNum)
+PCWheat <- A %*% svdWheat$v
+rownames(PCWheat) <- rownames(A)
+DistWheat <- dist(PCWheat)
+TreeWheat <- cutree(hclust(DistWheat), k = 5 )
+plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, 
+     pch = as.character(TreeWheat), xlab = "pc1", ylab = "pc2")
+vp <- rownames(PCWheat)[TreeWheat == 3]; length(vp)
+tp <- setdiff(rownames(PCWheat),vp)
+```
+
+#### 3a) Optimizing a subsample of size N to be representative of its own
+
+Since the objective is to select a set of 100 lines that represent best the training set (tp) of ~400 lines we will subset a relationship matrix for that training set (As).
+
+```{r}
+As <- A[tp,tp]
+DT2 <- DT[rownames(As),]
+```
+
+For this particular case there is no trait to optimize (x'a) but we just want to make sure that we maintain as much variation in the sample as possible (x'Ax). We then just create a dummy trait in the dataset (dummy) to put all the weight into the group relationship (x'Ax) using the lambda argument. The trait for occurrence we will use it as before to control the number of individuals to be in the sample. 
+
+```{r}
+res<-evolafit(cbind(dummy, occ)~id, dt= DT2, 
+                # constraints: if sum is greater than this ignore 
+                constraintsUB = c(Inf, 100), 
+                # constraints: if sum is smaller than this ignore
+                constraintsLB= c(-Inf, -Inf), 
+                # weight the traits for the selection
+                traitWeight = c(1,0), 
+                # population parameters
+                nCrosses = 100, nProgeny = 10, 
+                # coancestry parameters
+                A=As,
+                lambda=c(1,0), nQTLperInd = 80, 
+                # selection parameters
+                propSelBetween = 0.5, propSelWithin =0.5, 
+                nGenerations = 15, verbose = FALSE)
+
+best = bestSol(res)[1]
+sum(res$M[best,]) # total # of inds selected
+```
+
+You can see which individuals were selected.
+
+```{r}
+cex <- rep(0.5,nrow(PCWheat))
+names(cex) <- rownames(PCWheat)
+cex[names(which(res$M[best,]==1))]=2
+plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, cex=cex,
+     pch = TreeWheat, xlab = "pc1", ylab = "pc2")
+```
+
+### 3b) Optimizing a subsample of size N to be representative of another population
+
+we can use the covariance between the training population and the validation population to create a new trait (x'a) that can be used in addition to the group relationship (x'Ax).
+
+```{r}
+DT2$cov <- apply(A[tp,vp],1,mean)
+```
+
+The model can be specified as before with the suttle difference that the covariance between the training and validation population contributes to the fitness function.
+
+```{r}
+res<-evolafit(cbind(cov, occ)~id, dt= DT2, 
+                # constraints: if sum is greater than this ignore 
+                constraintsUB = c(Inf, 100), 
+                # constraints: if sum is smaller than this ignore
+                constraintsLB= c(-Inf, -Inf), 
+                # weight the traits for the selection
+                traitWeight = c(1,0), 
+                # population parameters
+                nCrosses = 100, nProgeny = 10, 
+                # coancestry parameters
+                A=As,
+                lambda=c(1,0), nQTLperInd = 80, 
+                # selection parameters
+                propSelBetween = 0.5, propSelWithin =0.5, 
+                nGenerations = 15, verbose = FALSE)
+best = bestSol(res)[1]
+sum(res$M[best,]) # total # of inds selected
+```
+
+You can plot the final results and see which individuals were picked.
+
+```{r}
+cex <- rep(0.5,nrow(PCWheat))
+names(cex) <- rownames(PCWheat)
+cex[names(which(res$M[best,]==1))]=2
+plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, cex=cex,
+     pch = TreeWheat, xlab = "pc1", ylab = "pc2")
+```
+
+### 6) How to specify constraints
+
+#### Gender
+In this case is better if you only create the cross combinations that are possible (e.g., where male and female can couple) and you handed them to the evolutionary algorithm. That means, the rows of the crosses to be in the searching space only include the realistic ones.
+
+#### Number of times a parent should be used
+
+In this case you would need to do 2 things:
+
+A) Create two new column with the mother and father of the cross
+B) Create a new trait that is computed on the fly while runing the analysis where the trait is a representation of how many times the parent is present in the current contribution. For example the trait function can be defined for mother as:
+
+```{r}
+# data$motherN <- as.numeric(as.factor(data$mother))
+# data$fatherN <- as.numeric(as.factor(data$father))
+# fitnessf <- list(motherN= function(motherN,fatherN){
+# v = table(c(motherN,fatherN))
+# res <- ifelse(any(v > 4), 0, 1)
+# return(res)
+# })
+```
+
+Where motherN is a new trait that is just a numerical recoding of the mothers (e.g., as.numeric(as.factor(dt$mother)) ). This new fitness function for the trait motherN can be added to the 'fitnessf' argument together with a constraint (e.g., constraintsLB=1) to ensure that only crosses that meet the number of times showing in a cross are among the selected candidates.
+
+### 7) How to optimize the number of progeny to produce per cross
+
+The advice here is to upload directly the phased genotypes (haplotypes) to the AlphaSimR machinery and simulate the possible crosses to explore how many individuals are required to sample a given trait (oligogenic or polygenic) with a given probablility. No need to use the evola package.
+
+## Literature
+
+Giovanny Covarrubias-Pazaran (2024).  evola: a simple evolutionary algorithm for complex problems. To be submitted to Bioinformatics.
+
+Gaynor, R. Chris, Gregor Gorjanc, and John M. Hickey. 2021. AlphaSimR: an R package for breeding program simulations. G3 Gene|Genomes|Genetics 11(2):jkaa017. https://doi.org/10.1093/g3journal/jkaa017.
+
+Chen GK, Marjoram P, Wall JD (2009). Fast and Flexible Simulation of DNA Sequence Data. Genome Research, 19, 136-142. http://genome.cshlp.org/content/19/1/136.
