@@ -1,10 +1,21 @@
 2024-07-20 Giovanny Covarrubias Pazaran <cova_ruber@live.com.mx>
 
       * [r1] Initial release: brining  a simple genetic algorithm for complex problems.
+      
+2024-08-20 Giovanny Covarrubias Pazaran <cova_ruber@live.com.mx>
+
+      * [r2] Improve to have a single fitness function across traits. More efficient matrix operations. Additional examples for how to do regression and add contraints.
+      
+2024-09-25 Giovanny Covarrubias Pazaran <cova_ruber@live.com.mx>
+
+      * [r2] Added additional arguments for stopping criteria and to keepBest to trace the path to the best solution.
+      * [r2] Added mutRate and nChr arguments to control the mutation rate and recombination rate.
+      
 
 
 ## TO DO
-+ Add the mutation and crossover rate to the parameters of the function (mutRateGenome and ??).
++ Add recombination rate through the use of the number of chromosomes and chromosome size. Is already there but still not functional
 + Not only allow the posibility of mutation in the genome, but also in the addtive effects (mutRateTrait)
-+ Is there any benefit in allowing ploidy? (e.g. more possible solutions)
-+ improve the regression approach
++ Make a function that traces the pedigree of the best solution easily? maybe just let the user download a package that builds pedigree plots and that way they can recreate the crossing path. 
++ Is there any benefit in allowing ploidy and heterozigosity? (e.g. more possible solutions stored in haplotypes), we may need to calculate values per haplotype instead of genotype. How we would select what passes? any individual that contains at least one good haplotype? may not be the best idea. I'll keep thinking about it.
+

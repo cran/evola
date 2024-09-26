@@ -34,8 +34,8 @@ data(DT_cpdata)
 DT <- DT_cpdata
 
 \donttest{
-# get best 20 individuals weighting variance by 0.5
-res<-evolafit(cbind(Yield, occ)~id, dt= DT, 
+# get best 20 individuals weighting variance by ~0.5=(30*pi)/180
+res<-evolafit(formula=cbind(Yield, occ)~id, dt= DT, 
               # constraints: if sum is greater than this ignore 
               constraintsUB = c(Inf,20), 
               # constraints: if sum is smaller than this ignore
@@ -44,13 +44,14 @@ res<-evolafit(cbind(Yield, occ)~id, dt= DT,
               traitWeight = c(1,0), 
               # population parameters
               nCrosses = 100, nProgeny = 10, 
+              recombGens=1, nChr=1, mutRate=0,
               # coancestry parameters
-              A=A, lambda=c(0.5,0), nQTLperInd = 2, 
+              A=A, lambda= (30*pi)/180 , nQTLperInd = 2, 
               # selection parameters
               propSelBetween = 0.5, propSelWithin =0.5, 
-              nGenerations = 40) 
+              nGenerations = 40, keepBest=FALSE) 
 
-best = which(res$pheno[,1]==max(res$pheno[,1]))[1];best
+best = bestSol(res)["pop","Yield"];best
 xa = (res$M \%*\% DT$Yield)[best,]; xa 
 xAx = res$M[best,] \%*\% A \%*\% res$M[best,]; xAx 
 sum(res$M[best,]) # total # of inds selected
