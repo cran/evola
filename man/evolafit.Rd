@@ -11,7 +11,7 @@ Using the AlphaSimR machinery it recreates the evolutionary forces applied to a 
 
 evolafit(formula, dt, 
      constraintsUB, constraintsLB, traitWeight,
-     nCrosses=50, nProgeny=40,nGenerations=30, 
+     nCrosses=50, nProgeny=20,nGenerations=20, 
      recombGens=1, nChr=1, mutRate=0,
      nQTLperInd=NULL, A=NULL, lambda=NULL,
      propSelBetween=1,propSelWithin=0.5,
@@ -51,32 +51,32 @@ The number of generations that the evolutionary process should run for.
 The number of recombination generations that should occur before selection is applied. This is in case the user wants to allow for more recombination before selection operates. The default is 1.
 }
   \item{nChr}{
-The number of chromosomes where features/genes should be allocated to. The default value is 1 but this number can be increased to mimic more recombination events at every generation. STILL NOT FUNCTIONAL.
+The number of chromosomes where features/genes should be allocated to. The default value is 1 but this number can be increased to mimic more recombination events at every generation and avoid linkage disequilibrium. 
 }
   \item{mutRate}{
 A value between 0 and 1 to indicate the proportion of random QTLs that should mutate in each individual. For example, a value of 0.1 means that a random 10\% of the QTLs will mutate in each individual randomly taking values of 0 or 1. Is important to notice that this implies that the stopping criteria based in variance will never be reached because we keep introducing variance through random mutation. 
 }
   \item{nQTLperInd}{
-The number of QTLs/genes (classifier x) that should be fixed for the positive allele at the begginning of the simulation. If not specified it will be equal to the 20\% of the QTLs (number of rows in the dt over 5). See details section.
+The number of QTLs/genes (classifier x) that should be fixed for the positive allele at the begginning of the simulation. If not specified it will be equal to the 20\% of the QTLs (calculated as the number of rows in the dt argument over 5). See details section.
 }
   \item{A}{
-A relationship matrix between the levels of the classifier variable (x or QTLs; not between the solutions). It is a kind of a linkage disequilibrium matrix. This function can be used or ignored in the fitness function.
+A relationship matrix between the levels of the 'x' variable or QTLs (not between the solutions). It is a kind of a linkage disequilibrium matrix. This function can be used or ignored in the fitness function. By default the weight to the x'Ax component is 0 though the lambda argument, where x is an individual/solution.
 }
   \item{lambda}{
 A numeric value indicating the weight assigned to the relationship between levels of the classifiers in comparison with the trait value. If not specified is assumed to be 0. This can be used or ignored in your customized fitness function.
 }
   \item{propSelBetween}{
-A numeric value between 0 and 1 indicating the proportion of families/crosses that should be selected. The default is 1, meaning all crosses are selected.
+A numeric value between 0 and 1 indicating the proportion of families/crosses of solutions/individuals that should be selected. The default is 1, meaning all crosses are selected or passed to the next generation.
 }
   \item{propSelWithin}{
-A numeric value between 0 and 1 indicating the proportion of individuals within families/crosses that should be selected. The default value is 0.5, meaning that 50\% of the top individuals are selected.
+A numeric value between 0 and 1 indicating the proportion of individuals/solutions within families/crosses that should be selected. The default value is 0.5, meaning that 50\% of the top individuals are selected.
 }
   \item{fitnessf}{
-An alternative fitness function for a linear combination of the traits. If NULL the default function will be:
+An alternative fitness function for a linear combination of the traits specified in 'y' in the formula argument. If NULL, the default function will be:
 
 function(Y,b,d,Q)\{(Y\%*\%b) - d\}
 
-where Y\%*\%b is equivalent to xa in contribution theory, and d is equal to x'Ax, being x the contribution vector to the solution, a are the QTL effects, and A is the covariance between QTLs, Q is the QTL matrix for the solution. If you provide your own fitness function please keep in mind that the variables Y, b, d and Q are already reserved and should always be added to your function (even if not used) in addition to your new variables.
+where Y\%*\%b is equivalent to xa in contribution theory, and d is equal to x'Ax, being x the contribution vector to the solution, a are the QTL effects, and A is the covariance between QTLs, Q is the QTL matrix for the solution, b are the weights for each trait, Y is the matrix of trait-values for each solution. If you provide your own fitness function please keep in mind that the variables Y, b, d and Q are already reserved and should always be added to your function (even if not used) in addition to your new variables.
 
 }
   \item{verbose}{
@@ -101,20 +101,30 @@ A TRUE/FALSE value to indicate if we should store the QTL matrix and pedigree of
 
 Using the AlphaSimR machinery (runMacs) it recreates the evolutionary forces applied to a problem where possible solutions replace individuals and combinations of variables in the problem replace the genes. Then evolutionary forces are applied to find a close-to-optimal solution. The number of solutions are controlled with the nCrosses and nProgeny parameters, whereas the number of initial QTLs activated in a solution is controlled by the nQTLperInd parameter. The number of activated QTLs of course will increase if has a positive effect in the fitness of the solutions. The drift force can be controlled by the recombGens parameter. The mutation rate can be controlled with the mutRate parameter. The recombination rate can be controlled with the nChr argument.
 
+The indivPerformance output contains the columns x'a, x'Ax, deltaC and nQTLs. These mean the following:
+
+In x'a or score : 'x' represents the contribution vector, 'a' is the vector of QTN effects, so x'a is the breeding value of a solution. Internally, we multiply all the matrix of solutions (Q) by the QTN effects (a).
+In deltaC : it represents the change in coancestry (e.g., inbreeding), it can be thought as the rate of coancestry.
+In x'Ax : 'x' represents the contribution vector, 'A' is the linkage disequilibrium matrix between QTNs (whatever the QTNs represent for your specific problem). In practice we do QAQ' and extract the diagonal values.
+In generation : it represents the generation at which this solution appeared.
+In nQTNs : it represent the final number of QTNs that are activated in homozygote state for the positive effect.
+
 }
 \value{
 
 \describe{
 
-\item{$M}{the matrix of haplotypes/solutions at the end of the run.}
-\item{$Mb}{the matrix of top (parents) haplotypes/solutions at the end of the run.}
+\item{indivPerformance}{the matrix of x'a (score), deltaC, x'Ax, generation, nQTNs per solution per generation. See details section above. }
+\item{pedBest}{if the argument keepBest=TRUE this contains the pedigree of the selected solutions across iterations.}
+\item{$M}{the matrix of QTN genotypes for the solutions/individuals selected at the end of the run.}
+\item{$Mb}{the matrix of top (parents) QTN genotypes for the solutions/individuals at the end of the run.}
 \item{$score}{a matrix with scores for different metrics across n generations of evolution.}
 \item{$pheno}{the matrix of phenotypes of individuals/solutions present in the last generation.}
 \item{$phenoBest}{the matrix of phenotypes of top (parents) individuals/solutions present in the last generation.}
-\item{indivPerformance}{the matrix of x'a, x'Ax, deltaC, nQTLs per solution per generation.}
 \item{pop}{AlphaSimR object used for the evolutionary algorithm at the last iteration.}
 \item{best}{AlphaSimR object corresponding to the best parental haplotypes/solutions selected for new crosses across all cycles.}
-\item{pedBest}{if the argument keepBest=TRUE this contains the pedigree of the selected solutions across iterations.}
+\item{constCheckUB}{A matrix with as many rows as solutions and columns as traits to be constrained. 0s indicate that such trait went beyond the bound in that particular solution.}
+\item{constCheckLB}{A matrix with as many rows as solutions and columns as traits to be constrained. 0s indicate that such trait went beyond the bound in that particular solution.}
 \item{traits}{a character vector corresponding to the name of the variables used in the fitness function.}
 
 }
@@ -161,12 +171,24 @@ head(Gems)
 # Task: Gem selection. 
 # Aim: Get highest combined value.
 # Restriction: Max weight of the gem combined = 10. 
+
+# simple specification
+res00<-evolafit(formula=cbind(Weight,Value)~Color, dt= Gems,
+               # constraints on traits: if greater than this ignore
+               constraintsUB = c(10,Inf), nGenerations = 10
+)
+best = bestSol(res00)["pop","Value"]
+xa = res00$M[best,] \%*\% as.matrix(Gems[,c("Weight","Value")]); xa
+res00$M[best,]
+res00$score[nrow(res00$score),]
+
+# more complete specification
 res0<-evolafit(formula=cbind(Weight,Value)~Color, dt= Gems,
-               # constraints: if greater than this ignore
+               # constraints on traits: if greater than this ignore
                constraintsUB = c(10,Inf), 
-               # constraints: if smaller than this ignore
+               # constraints on traits: if smaller than this ignore
                constraintsLB= c(-Inf,-Inf), 
-               # weight the traits for the selection
+               # weight the traits for the selection (fitness function)
                traitWeight = c(0,1), 
                # population parameters
                nCrosses = 100, nProgeny = 20, 
@@ -181,7 +203,6 @@ res0<-evolafit(formula=cbind(Weight,Value)~Color, dt= Gems,
 
 best = bestSol(res0)["pop","Value"]
 xa = res0$M[best,] \%*\% as.matrix(Gems[,c("Weight","Value")]); xa
-
 res0$M[best,]
 res0$score[nrow(res0$score),]
 
