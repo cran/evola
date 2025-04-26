@@ -32,6 +32,7 @@ Chen GK, Marjoram P, Wall JD (2009). Fast and Flexible Simulation of DNA Sequenc
 
 data(DT_cpdata)
 DT <- DT_cpdata
+A <- A[DT$id,DT$id]
 
 \donttest{
 # get best 20 individuals weighting variance by ~0.5=(30*pi)/180
@@ -41,25 +42,26 @@ res<-evolafit(formula=cbind(Yield, occ)~id, dt= DT,
               # constraints: if sum is smaller than this ignore
               constraintsLB= c(-Inf,-Inf), 
               # weight the traits for the selection
-              traitWeight = c(1,0), 
+              b = c(1,0), 
               # population parameters
               nCrosses = 100, nProgeny = 10, 
               recombGens=1, nChr=1, mutRate=0,
               # coancestry parameters
-              A=A, lambda= (30*pi)/180 , nQTLperInd = 2, 
+              D=A, lambda= (30*pi)/180 , nQTLperInd = 20, 
               # selection parameters
               propSelBetween = 0.5, propSelWithin =0.5, 
-              nGenerations = 40, keepBest=FALSE) 
-
-best = bestSol(res)["pop","Yield"];best
-xa = (res$M \%*\% DT$Yield)[best,]; xa 
-xAx = res$M[best,] \%*\% A \%*\% res$M[best,]; xAx 
-sum(res$M[best,]) # total # of inds selected
+              nGenerations = 40) 
+              
+Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
+best = bestSol(res$pop)[,"Yield"];best
+qa = (Q \%*\% DT$Yield)[best,]; qa 
+qDq = Q[best,] \%*\% A \%*\% Q[best,]; qDq 
+sum(Q[best,]) # total # of inds selected
 
 pmonitor(res)
 
-plot(DT$Yield, col=as.factor(res$M[best,]), 
-     pch=(res$M[best,]*19)+1)
+plot(DT$Yield, col=as.factor(Q[best,]), 
+     pch=(Q[best,]*19)+1)
 
 pareto(res)
  

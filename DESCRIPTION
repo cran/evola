@@ -1,13 +1,13 @@
 Package: evola
-Version: 1.0.4
-Date: 2025-01-01
+Version: 1.0.5
+Date: 2025-04-24
 Title: Evolutionary Algorithm
 Authors@R: c(
     person("Giovanny","Covarrubias-Pazaran", email="cova_ruber@live.com.mx", role=c("aut","cre"),
 	comment=c(ORCID="0000-0002-7194-3837"))
 	)
 Maintainer: Giovanny Covarrubias-Pazaran <cova_ruber@live.com.mx>
-Description: Runs a genetic algorithm using the 'AlphaSimR' machinery <doi:10.1093/g3journal/jkaa017> and the coalescent simulator 'MaCS' <doi:10.1101/gr.083634.108>.
+Description: Runs an evolutionary algorithm using the 'AlphaSimR' machinery <doi:10.1093/g3journal/jkaa017> .
 Depends: R(>= 3.5.0), AlphaSimR (>= 1.4.2), Matrix (>= 1.0), methods,
         crayon
 LazyLoad: yes
@@ -20,5 +20,5 @@ Repository: CRAN
 Suggests: rmarkdown, knitr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-Packaged: 2025-01-18 21:53:37 UTC; giovannycovarrubias
-Date/Publication: 2025-01-18 22:20:01 UTC
+Packaged: 2025-04-26 02:48:26 UTC; giovannycovarrubias
+Date/Publication: 2025-04-26 03:10:03 UTC
