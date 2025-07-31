@@ -27,7 +27,7 @@ res0<-evolafit(cbind(Weight,Value)~Color, dt= Gems,
                # population parameters
                nCrosses = 100, nProgeny = 20, recombGens = 1, 
                # coancestry parameters
-               D=NULL, lambda=0, nQTLperInd = 1, 
+               D=NULL, lambda=0, nQtlStart = 1, 
                # selection parameters
                propSelBetween = .9, propSelWithin =0.9, 
                nGenerations = 15, verbose = FALSE
@@ -60,7 +60,7 @@ res<-evolafit(cbind(Yield, occ)~id, dt= DT,
               # population parameters
               nCrosses = 100, nProgeny = 10, 
               # coancestry parameters
-              D=A, lambda= (30*pi)/180 , nQTLperInd = 2, 
+              D=A, lambda= (30*pi)/180 , nQtlStart = 2, 
               # selection parameters
               propSelBetween = 0.5, propSelWithin =0.5, 
               nGenerations = 15, verbose=FALSE) 
@@ -97,7 +97,7 @@ head(DT)
 #                 # population parameters
 #                 nCrosses = 100, nProgeny = 10, 
 #                 # coancestry parameters
-#                 D=D, lambda= (20*pi)/180 , nQTLperInd = 100, 
+#                 D=D, lambda= (20*pi)/180 , nQtlStart = 100, 
 #                 # selection parameters
 #                 propSelBetween = 0.5, propSelWithin =0.5, 
 #                 nGenerations = 15, verbose=FALSE) 
@@ -154,7 +154,7 @@ res<-evolafit(cbind(dummy, occ)~id, dt= DT2,
                 nCrosses = 100, nProgeny = 10, 
                 # coancestry parameters
                 D=As,
-                lambda=(60*pi)/180, nQTLperInd = 80, 
+                lambda=(60*pi)/180, nQtlStart = 80, 
                 # selection parameters
                 propSelBetween = 0.5, propSelWithin =0.5, 
                 nGenerations = 15, verbose = FALSE)
@@ -185,7 +185,7 @@ res<-evolafit(cbind(cov, occ)~id, dt= DT2,
                 nCrosses = 100, nProgeny = 10, 
                 # coancestry parameters
                 D=As,
-                lambda=(60*pi)/180, nQTLperInd = 80, 
+                lambda=(60*pi)/180, nQtlStart = 80, 
                 # selection parameters
                 propSelBetween = 0.5, propSelWithin =0.5, 
                 nGenerations = 15, verbose = FALSE)
@@ -246,7 +246,7 @@ fitnessf <-function (Y, b, Q, D, a, lambda, scale=TRUE, Z) {
 #               # population parameters
 #               nCrosses = 100, nProgeny = 10, 
 #               # coancestry parameters
-#               D=D, lambda= (10*pi)/180 , nQTLperInd = 40, 
+#               D=D, lambda= (10*pi)/180 , nQtlStart = 40, 
 #               # new fitness function and additional args
 #               fitnessf = fitnessf, Z=Z,
 #               # selection parameters
@@ -310,7 +310,7 @@ res0<-evolafit(alpha~qtl, dt= dt,
                # population parameters
                nCrosses = 50, nProgeny = 10, recombGens = 1, 
                # coancestry parameters
-               D=NULL, lambda=0, nQTLperInd = 4, fixQTLperInd = TRUE,
+               D=NULL, lambda=0, nQtlStart = 4, fixNumQtlPerInd = TRUE,
                # least MSE function (y - Xb)^2; Y are betas; X*Y is X*beta; 
                # Y and X are fixed, we just evolve the betas
                fitnessf=regFun,
@@ -448,9 +448,9 @@ res<-evolafit(formula=distances~route, dt= df2,
               # population parameters
               nCrosses = 50, nProgeny = 10, 
               # genome parameters
-              recombGens = 1, nChr=1, mutRate=0, 
+              recombGens = 1, nChr=1, mutRateAllele=0, 
               # start with at least n QTLs equivalent to n cities
-              nQTLperInd = nCities*2, 
+              nQtlStart = nCities*2, 
               # coancestry parameters
               D=NULL, lambda=0, 
               fitnessf = salesf, 

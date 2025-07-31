@@ -1,6 +1,6 @@
 Package: evola
-Version: 1.0.5
-Date: 2025-04-24
+Version: 1.0.6
+Date: 2025-07-29
 Title: Evolutionary Algorithm
 Authors@R: c(
     person("Giovanny","Covarrubias-Pazaran", email="cova_ruber@live.com.mx", role=c("aut","cre"),
@@ -13,12 +13,12 @@ Depends: R(>= 3.5.0), AlphaSimR (>= 1.4.2), Matrix (>= 1.0), methods,
 LazyLoad: yes
 LazyData: yes
 License: GPL (>= 2)
-NeedsCompilation: yes
-Author: Giovanny Covarrubias-Pazaran [aut, cre]
-    (<https://orcid.org/0000-0002-7194-3837>)
+Author: Giovanny Covarrubias-Pazaran [aut, cre] (ORCID:
+    <https://orcid.org/0000-0002-7194-3837>)
 Repository: CRAN
 Suggests: rmarkdown, knitr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-Packaged: 2025-04-26 02:48:26 UTC; giovannycovarrubias
-Date/Publication: 2025-04-26 03:10:03 UTC
+NeedsCompilation: no
+Packaged: 2025-07-30 23:56:39 UTC; giovannycovarrubias
+Date/Publication: 2025-07-31 04:00:02 UTC

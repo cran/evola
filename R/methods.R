@@ -11,6 +11,7 @@ update.evolaFitMod <- function(object, formula., evaluate = TRUE, ...) {
   if (!missing(formula.)){
     call$formula <- update.formula(formula(object), formula.)
   }
+  # print(call$formula)
   if (length(extras) > 0) {
     existing <- !is.na(match(names(extras), names(call)))
     for (a in names(extras)[existing]) call[[a]] <- extras[[a]]
@@ -32,13 +33,15 @@ update.evolaFitMod <- function(object, formula., evaluate = TRUE, ...) {
   pf <- parent.frame()
   sf <- sys.frames()[[1]]
   
-  tryCatch(eval(call,  envir = ff),  ## try formula environment
-           error = function(e) {
-             tryCatch(eval(call, envir = sf),  ## try stack frame
-                      error = function(e) {
-                        eval(call, envir=pf) ## try parent frame
-                      })
-           })
+  return( eval(call, envir=pf) )
+  
+  # tryCatch(eval(call,  envir = ff),  ## try formula environment
+  #          error = function(e) {
+  #            tryCatch(eval(call, envir = sf),  ## try stack frame
+  #                     error = function(e) {
+  #                       eval(call, envir=pf) ## try parent frame
+  #                     })
+  #          })
   
   ##
   ## combf <- tryCatch(
@@ -47,3 +50,19 @@ update.evolaFitMod <- function(object, formula., evaluate = TRUE, ...) {
   ## )
   ## eval(call,combf, enclos=pf)
 }
+
+summary.Pop <- function(object, ...){
+  dd=data.frame(id=object@id, mother=object@mother, father= object@father)
+  dd$cross <- paste(dd$mother, dd$father, sep="_")
+  dd$n <- 1
+  nCross <- length(table(dd$cross))
+  nMother <- length(table(dd$mother))
+  nFather <- length(table(dd$father))
+  nId <- length(table(dd$id))
+  nIdPerCross <- mean(table(dd$cross))
+  return( data.frame(nId=nId,nCross=nCross,
+                     nMother=nMother, nFather=nFather,
+                     nIdPerCross=nIdPerCross)
+  )
+}
+

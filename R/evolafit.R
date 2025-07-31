@@ -1,15 +1,17 @@
 evolafit <- function(formula, dt, 
-                     constraintsUB, constraintsLB, b,
-                     nCrosses=50, nProgeny=20,nGenerations=20, 
-                     recombGens=1, nChr=1, mutRate=0,
-                     nQTLperInd=NULL, D=NULL, lambda=0,
+                     constraintsUB, constraintsLB,constraintW=NULL, 
+                     b, nCrosses=50, nProgeny=20,nGenerations=20, 
+                     recombGens=1, nChr=1, mutRateAllele=0, mutRateAlpha=0,
+                     nQtlStart=NULL, D=NULL, lambda=0,
                      propSelBetween=NULL,propSelWithin=NULL,
                      fitnessf=NULL, verbose=TRUE, dateWarning=TRUE,
                      selectTop=TRUE, tolVarG=1e-6, 
                      Ne=50, initPop=NULL, simParam = NULL, 
-                     fixQTLperInd=FALSE, traceDelta=TRUE, topN=10, ...){
+                     fixNumQtlPerInd=FALSE, traceDelta=TRUE, topN=10,
+                     includeSet=NULL, excludeSet=NULL,
+                     ...){
   
-  my.date <- "2025-08-01"
+  my.date <- "2025-11-01"
   your.date <- Sys.Date()
   ## if your month is greater than my month you are outdated
   if(dateWarning & verbose){
@@ -20,17 +22,20 @@ evolafit <- function(formula, dt,
   # if(propSelBetween==0 | propSelWithin==0){stop("Please ensure that parameters propSelWithin and propSelBetween are different than zero.", call. = FALSE)}
   if(missing(formula)){stop("Please provide the formula to know traits and classifiers.", call. = FALSE)}
   if(is.null(propSelBetween)){
-    propSelBetween <- stan(logspace(seq(1,-1, -2/nGenerations), p=3), ub=0.5, lb=0.2)
+    propSelBetween <- stan(logspace(seq(1,-1, -2/nGenerations), p=3), ub=0.8, lb=0.2)
   }else{
     propSelBetween <- rep(propSelBetween, nGenerations)
   }
   if(is.null(propSelWithin)){
-    propSelWithin <- stan(logspace(seq(1,-1, -2/nGenerations), p=3), ub=0.2, lb=0.5)
+    propSelWithin <- stan(logspace(seq(1,-1, -2/nGenerations), p=3), ub=0.2, lb=0.8)
   }else{
     propSelWithin <- rep(propSelWithin, nGenerations)
   }
   if(propSelBetween[1]>0 & nCrosses==0){stop("If you apply selection between families you need to set nCrosses to a value > 0.", call. = FALSE)}
   if(nGenerations < 1){stop("nGenerations cannot be smaller than 1.")}
+  if(is.null(constraintW)){
+    constraintW <- rep(1, nGenerations)
+  } # different weight to constraints at each generation
   
   mc <- match.call() # create a call
   # add the fitness function (current options are qa=-1 to ln>=0 )
@@ -52,17 +57,17 @@ evolafit <- function(formula, dt,
   if(missing(b)){b <- rep(1,length(traits))}
   if(length(b) != length(traits)){stop(paste0("Weights need to have the same length than traits (",length(traits),")"), call. = FALSE)}
   if(is.null(D)){D <- Matrix::Diagonal(nrow(dt)); useD=FALSE}else{useD=TRUE}
-  if(is.null(nQTLperInd)){nQTLperInd <- nrow(dt)/5}
+  if(is.null(nQtlStart)){nQtlStart <- ceiling(nrow(dt)/5)}
   # check that the user has provided a single value for each QTL
-  nMutations = round(mutRate * nrow(dt)) # number of mutations per individual per generation
+  
   
   if(is.null(initPop)){
     # 1) initialize the population with customized haplotypes to ensure a single QTL per individual
     av <- 1:nrow(dt)
     haplo = Matrix::Matrix(0, nrow= Ne*2, ncol = nrow(dt)) # rbind( diag(nrow(dt)), diag(nrow(dt)) )
     for (i in seq(1,nrow(haplo),2)) {
-      haplo[i,sample(av,nQTLperInd)] <- 1
-      # haplo[i,] <- ifelse(runif(ncol(haplo))< (nQTLperInd/ncol(haplo)) ,1,0)
+      haplo[i,sample(av,nQtlStart)] <- 1
+      # haplo[i,] <- ifelse(runif(ncol(haplo))< (nQtlStart/ncol(haplo)) ,1,0)
       haplo[(i+1),] <- haplo[i,]
     }
     colnames(haplo) = dt[,classifiers]
@@ -114,11 +119,8 @@ evolafit <- function(formula, dt,
   ################################
   ################################
   ## FOR EACH GENERATION
-  spacing9=paste(rep(" ",10), collapse = "");spacing99=paste(rep(" ",9), collapse = "");spacing999=paste(rep(" ",8), collapse = "")
   j =0 # in 1:nGenerations
   nonStop=TRUE
-  pedBest <- list(); 
-  best <- pop[0]; pedBest <- data.frame(matrix(NA,nrow=0, ncol=4)); colnames(pedBest) <- c("id","mother","father","gen")
   
   if(traceDelta){ # if user wants to trace inbreeding (default is TRUE but it can be a costly operation)
     m <- Matrix::Matrix(1,nrow=1,ncol=ncol(D))
@@ -132,13 +134,83 @@ evolafit <- function(formula, dt,
   console <-  data.frame(matrix(NA,nrow=nGenerations, ncol=8))
   nin <- nCrosses*nProgeny
   initVarG = round(sum(diag(varG(pop = pop))),3)
-  initpropSelBetween <- round(propSelBetween, 2)
   while(nonStop) { # for each generation we breed # j=1
     j=j+1
     
-    Q <- pullQtlGeno(pop, simParam = SP, trait = iTrait)/2 #?/2
+    Q <- pullQtlGeno(pop, simParam = SP, trait = 1)/2 #?/2
     Q <- as(as(as( Q,  "dMatrix"), "generalMatrix"), "CsparseMatrix") # as(Q, Class = "dgCMatrix")
     rownames(Q) <- pop@id
+    
+    ## use mutation rate in genome
+    if(mutRateAllele > 0){
+      nMutations = ceiling(mutRateAllele * nrow(dt)) # number of mutations per individual per generation
+      if(nMutations == 1){
+        pointMut = t(as.matrix(apply(data.frame(1:nInd(pop)), 1, function(x){
+          sample(1:nrow(dt), nMutations, replace = FALSE)
+        }) ))
+      }else{
+        pointMut = as.matrix(apply(data.frame(1:nInd(pop)), 1, function(x){
+          sample(1:nrow(dt), nMutations, replace = FALSE)
+        }) )
+      }
+      # 
+      DRIFT = drift(pop, simParam=SP)$Trait1
+      for(iQtl in unique(as.vector(pointMut))){
+        indsToModif=which(pointMut == iQtl, arr.ind = TRUE)[,"col"]
+        allele = sample(0:1, 1)
+        pop = editGenome(pop, ind=indsToModif,chr=as.numeric(DRIFT[iQtl,"chr"]), segSites=DRIFT[iQtl,"ss"], simParam=SP, allele = allele)
+      }
+    }else{pointMut=as.data.frame(matrix(NA, nrow=0, ncol=1))}
+    ## use mutation rate in alphas
+    if(mutRateAlpha > 0){
+      nMutations = ceiling(mutRateAlpha * nrow(dt)) # define the number of mutations
+      nTraits <- SP$nTraits
+      for(iTrait in 1:nTraits){ # iTrait=1
+        # extract the trait to mutate
+        traitToMutate <- SP$traits[[iTrait]] 
+        # mutate the average allelic effects
+        traitToMutate@addEff[sample(1:nrow(dt), nMutations, replace = FALSE)] = rnorm(nMutations)
+        # replace the trait back
+        SP$switchTrait(traitPos=iTrait, lociMap=traitToMutate, varE = NA_real_, force = TRUE)
+      }
+    }
+    ## enf of use mutation rate
+    ###########################
+    ## if user wants to fix the number of QTLs activated apply the following rules
+    # 1) if more than nQtlStart we silence some
+    # 2) if less than nQtlStart we activate some
+    if(fixNumQtlPerInd){
+      Qfq <- pullQtlGeno(pop, simParam = SP, trait = 1); Qfq <- Qfq/2
+      DRIFT = drift(pop, simParam=SP)$Trait1
+      for(iInd in 1:nInd(pop)){ #  iInd=1 for each individual
+        iQfq <- Qfq[iInd,]; 
+        areZeros <- which(iQfq == 0); areOnes <- setdiff(1:ncol(Qfq),areZeros)
+        howMany <- sum(iQfq) # how many QTLs are activated, we're assuming is a 0/1 matrix
+        totalToAddOrRem <- abs(howMany - nQtlStart) # deviation from expectation
+        if( howMany > nQtlStart ){ # if exceeded silence some
+          toRem <- sample(areOnes, totalToAddOrRem) # pick which ones will be silenced
+          pop = editGenome(pop, ind=iInd,chr=as.numeric(DRIFT[toRem,"chr"]), segSites=DRIFT[toRem,"ss"], simParam=SP, allele = 0)
+        }else if( howMany < nQtlStart){ # if lacked activate some
+          toAdd <- sample(areZeros, totalToAddOrRem) # pick which ones will be activated
+          pop = editGenome(pop, ind=iInd,chr=as.numeric(DRIFT[toAdd,"chr"]), segSites=DRIFT[toAdd,"ss"], simParam=SP, allele = 1)
+        } # else do nothing
+      }
+    }
+
+    if(!is.null(includeSet)){
+      DRIFT = drift(pop, simParam=SP)$Trait1
+      pop = editGenome(pop, ind=1:nInd(pop),
+                       chr=as.numeric(DRIFT[which(includeSet>0),"chr"]), 
+                       segSites=DRIFT[which(includeSet>0),"ss"], simParam=SP, allele = 1)
+    }
+    if(!is.null(excludeSet)){
+      DRIFT = drift(pop, simParam=SP)$Trait1
+      pop = editGenome(pop, ind=1:nInd(pop),
+                       chr=as.numeric(DRIFT[which(excludeSet>0),"chr"]), 
+                       segSites=DRIFT[which(excludeSet>0),"ss"], simParam=SP, allele = 0)
+    }
+    ## enf of fixqtl
+    
     a <- do.call(cbind, lapply(SP$traits, function(x){x@addEff}))
     colnames(a) <- traits
     pop@gv <- as.matrix(Q%*% a)
@@ -158,7 +230,6 @@ evolafit <- function(formula, dt,
       }
     }
     pop@pheno[,1] <- fitnessValuePop[,1]
-    
     ## apply selection between and within
     structure = table(paste(pop@mother, pop@father))
     nc = length(structure)
@@ -183,8 +254,10 @@ evolafit <- function(formula, dt,
     
     for(iTrait in 1:length(traits)){ # iTrait=1
       # check the contraints and trace them back
-      constCheckUB[,iTrait] <- ifelse( (pop@gv[,iTrait] > constraintsUB[iTrait])  , 0 , 1) # ifelse(c1+c2 < 2, 0, 1)
-      constCheckLB[,iTrait] <- ifelse( (pop@gv[,iTrait] < constraintsLB[iTrait]) , 0 , 1)
+      constCheckUB[,iTrait] <- ifelse( (pop@gv[,iTrait] > constraintsUB[iTrait]*(1+(1-constraintW[j])) )  , 0 , 1) # ifelse(c1+c2 < 2, 0, 1)
+      constCheckLB[,iTrait] <- ifelse( (pop@gv[,iTrait] < constraintsLB[iTrait]*constraintW[j] ) , 0 , 1)
+      # constCheckUB[,iTrait] <- ifelse( (pop@gv[,iTrait] > constraintsUB[iTrait])  , 0 , 1) # ifelse(c1+c2 < 2, 0, 1)
+      # constCheckLB[,iTrait] <- ifelse( (pop@gv[,iTrait] < constraintsLB[iTrait]) , 0 , 1)
       nan0 <- which(is.nan( pop@gv[,iTrait]))
       if(length(nan0) > 0){ constCheckUB[nan0,iTrait] = 0; constCheckLB[nan0,iTrait] = 0 }
     } # end of for each trait
@@ -208,19 +281,18 @@ evolafit <- function(formula, dt,
     ## END OF FOR EACH TRAIT WE APPLY CONSTRAINTS
     ################################
     ################################
-    # print(intersect(popCL, popCU))
-    # selected <- intersect(popF@id,popW@id)
-    # print(str(list(popF,popW,popCL, popCU)))
-    # print(propSelBetween[j])
-    # print(propSelWithin[j])
     parentsForSelection <- list(popF,popW,popCL, popCU)
     selected <- Reduce(intersect, parentsForSelection )
     if(length(selected) == 0){
       selected <- intersect(popCL,popCU )
     }
     if(length(selected) < 2){
-      message("Too many constraints. No legal solutions found. Random selection applied.")
-      selected <- pop@id[sample(1:nInd(pop), ceiling(nInd(pop)*propSelBetween*propSelWithin) )]
+      message("No legal solutions found. Selecting all individuals meeting constraints.")
+      selected <- Reduce(intersect, list(popCL, popCU))
+      if(length(selected) < 2){
+        message("Too many constraints. No legal solutions found. Random selection p=0.5 applied.")
+        selected <- pop@id[sample(1:nInd(pop), ceiling(nInd(pop)*.5) )]
+      }
     }
     pop <- pop[which(pop@id %in% selected)]
     
@@ -235,16 +307,13 @@ evolafit <- function(formula, dt,
       deltaC <- ( (qtDq/(4*(apply(Q/2,1,sum)^2))) - mtDm)/(1-mtDm) # numerator is equivalent to mtDm 
     }else{deltaC=NA}
     
-    
-    
     #################################
     # solutions selected for tracing
     best[[j]] <- selectInd(pop=pop, nInd = min(c(nInd(pop),topN)), trait = 1, 
                            use = "pheno", simParam = SP, 
                            selectTop=selectTop,... #H=H,nCities=nCities
     )
-    pedBest = rbind(pedBest, data.frame(id=best[[j]]@id, mother=best[[j]]@mother, father=best[[j]]@father, gen=j) )
-    
+   
     mfvp =  mean(as.vector(fitnessValuePop[best[[j]]@id,]))
     indivPerformance[[j]] <- data.frame(id=best[[j]]@id, fitness=as.vector(fitnessValuePop[best[[j]]@id,]), 
                                         generation=j, nQTL=as.vector(apply(Q[best[[j]]@id,,drop=FALSE]/2,1,sum)),
@@ -258,95 +327,50 @@ evolafit <- function(formula, dt,
       }
     }
     pop <- makeDH(pop=pop, nDH = 1, simParam = SP)
+    
     #############################################
-    ## if user wants to fix the number of QTLs activated apply the following rules
-    # 1) if more than nQTLperInd we silence some
-    # 2) if less than nQTLperInd we activate some
-    if(fixQTLperInd){
-      Qfq <- pullQtlGeno(pop, simParam = SP, trait = 1); Qfq <- Qfq/2
-      for(iInd in 1:nInd(pop)){ # for each individual
-        iQfq <- Qfq[iInd,]; areZeros <- which(iQfq == 0); areOnes <- setdiff(1:ncol(Qfq),areZeros)
-        howMany <- sum(iQfq) # how many QTLs are activated, we're assuming is a 0/1 matrix
-        toAddOrRem <- abs(howMany - nQTLperInd) # deviation from expectation
-        if( howMany > nQTLperInd ){ # if exceeded silence some
-          toRem <- sample(areOnes, toAddOrRem) # pick which ones will be silenced
-          for(iChange in 1:toAddOrRem){
-            pop = editGenome(pop, ind=iInd,chr=1, segSites=toRem[iChange], simParam=SP, allele = 0)
-          }
-        }else if( howMany < nQTLperInd){ # if lacked activate some
-          toAdd <- sample(areZeros, toAddOrRem) # pick which ones will be activated
-          for(iChange in 1:toAddOrRem){
-            pop = editGenome(pop, ind=iInd,chr=1, segSites=toAdd[iChange], simParam=SP, allele = 1)
-          }
-        } # else do nothing
-      }
-    }
-    #############################################
-    ## compute constrained traits
+    ## compute phenotypes
     if(all(SP$varG>0)){
       pop = setPheno(pop,h2=rep(.98,length(which(variances>0))), simParam = SP, traits = which(variances > 0) )
     }else{
       pop@pheno <- apply(pop@pheno,2,function(xx){rnorm(length(xx))}) # rnorm(length(pop@pheno))
     }
-    
-    ## use mutatio rate
-    if(mutRate > 0){
-      if(nMutations == 1){
-        pointMut = t(as.matrix(apply(data.frame(1:nInd(pop)), 1, function(x){
-          sample(1:nrow(dt), nMutations, replace = FALSE)
-        }) ))
-      }else{
-        pointMut = as.matrix(apply(data.frame(1:nInd(pop)), 1, function(x){
-          sample(1:nrow(dt), nMutations, replace = FALSE)
-        }) )
-      }
-      # 
-      for(iQtl in unique(as.vector(pointMut))){
-        modif=which(pointMut == iQtl, arr.ind = TRUE)[,"col"]
-        allele = sample(0:1, 1)
-        pop = editGenome(pop, ind=modif,chr=1, segSites=iQtl, simParam=SP, allele = allele)
-      }
-    }else{pointMut=as.data.frame(matrix(NA, nrow=0, ncol=1))}
     ##############################################################
     ##############################################################
     #store the performance of the jth generation for plot functions
-    
     if(nrow(pop@gv) > 0){
       totalVarG = sum(diag(varG(pop = pop)))
     }else{
       totalVarG = 0
     }
+    console[j,] <- c(j, length(didntMetConst), length(didntMetConstL), 
+                     round(totalVarG, 3), round(mfvp, 3), round(propSelBetween[j], 2),
+                     round(propSelWithin[j], 2),  Sys.time() )
     if(verbose){
       if(j==1){
-        message(paste0("Pop with ", nCrosses, " crosses and ", nProgeny, " progeny (",nCrosses*nProgeny,") solutions"))
+        message(paste0("Population with ", nCrosses, " crosses, ", nProgeny, " progeny, and ",ncol(Q)," QTLs"))
         message(
-          cat("gener  constUB  constLB   varG   propB   propW          time")
+          cat("gener  constUB  constLB  varG%   propB   propW   fit       time")
         )
       }
-      
-      console[j,] <- c(j, length(didntMetConst), length(didntMetConstL), 
-                       round(totalVarG, 3), round(mfvp, 3), round(propSelBetween[j], 2),
-                       round(propSelWithin[j], 2), 
-                       Sys.time()
-                       )
       sp <- paste(rep(" ", 2), collapse = "")
       message(cat(paste(
         sp, addZeros(1:nGenerations, nr=0)[j], 
         sp, addZeros(c(length(didntMetConst),nin), nr=0)[1],
         sp, addZeros(c(length(didntMetConstL),nin), nr=0)[1],
-        sp, addZeros(c(round(totalVarG, 3),initVarG))[1],
+        sp, addZeros(c(round(totalVarG/initVarG, 3),1.000))[1],
         sp, addZeros(c( round(propSelBetween[j], 2) , round(propSelBetween, 2) ))[1], 
         sp, addZeros(c( round(propSelWithin[j], 2) , round(propSelWithin, 2) ))[1], 
-        sp, Sys.time()
+        sp, addZeros(c(  round(mfvp, 3) , round(console[1:j,5], 3) ))[1], 
+        sp, strsplit(format(Sys.time(), "%a %b %d %X %Y"), " ")[[1]][4]
       )))
-
     }
     if(j == nGenerations){nonStop = FALSE}
     if(nrow(pop@gv) > 0){
       if(totalVarG < tolVarG){nonStop = FALSE; message("Variance across traits exhausted. Early stop.")}
     }else{
-      nonStop = FALSE; message("All individuals discarded. Consider changing some parameter values e.g., mutRate
-                           or nQTLperInd (initial number of QTLs) to avoid all 
+      nonStop = FALSE; message("All individuals discarded. Consider changing some parameter values e.g., mutRateAllele
+                           or nQtlStart (initial number of QTLs) to avoid all 
                            solutions to go beyond the bounds.")
     }
   }# end of for each generation
@@ -372,20 +396,16 @@ evolafit <- function(formula, dt,
   rownames(Q) <- popEvola@id
   a <- do.call(cbind, lapply(SP$traits, function(x){x@addEff}))
   popEvola@gv <- as.matrix(Q%*% a)
-  
   fitnessValuePop<- do.call("fitnessf", args=list(Y=popEvola@gv, b=b,  Q=Q,
                                                   a=a, D=D, lambda=lambda,
                                                   ... ), quote = TRUE)
+
   if(!is.matrix(fitnessValuePop)){
     fitnessValuePop <- Matrix::Matrix(fitnessValuePop,ncol=1)
   };  rownames(fitnessValuePop) <- popEvola@id
   popEvola@fitness <- as.vector(fitnessValuePop)
   indivPerformance[,"fitness"] <-  as.vector(fitnessValuePop)
-  popEvola@indivPerformance <- if(is.null(indivPerformance)){data.frame()}else{indivPerformance} # ifelse(is.null(indivPerformance), data.frame(), ifelse(is.list(indivPerformance), data.frame(), indivPerformance))
-  
-  
-  # rownames(indivPerformance) <- indivPerformance$id
-  # popEvola@fitness <- as.vector(indivPerformance[best@id,"fitness"])
+  popEvola@indivPerformance <- if(is.null(indivPerformance)){data.frame()}else{indivPerformance} 
   
   res <- list(pop=popEvola, simParam=SP, call=mc, fitness=fitnessValuePop, console=console)
   class(res) <- "evolaFitMod"

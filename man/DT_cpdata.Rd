@@ -45,15 +45,15 @@ res<-evolafit(formula=cbind(Yield, occ)~id, dt= DT,
               b = c(1,0), 
               # population parameters
               nCrosses = 100, nProgeny = 10, 
-              recombGens=1, nChr=1, mutRate=0,
+              recombGens=1, nChr=1, mutRateAllele=0,
               # coancestry parameters
-              D=A, lambda= (30*pi)/180 , nQTLperInd = 20, 
+              D=A, lambda= (30*pi)/180 , nQtlStart = 20, 
               # selection parameters
               propSelBetween = 0.5, propSelWithin =0.5, 
               nGenerations = 40) 
               
 Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
-best = bestSol(res$pop)[,"Yield"];best
+best = bestSol(res$pop)[,"fitness"];best
 qa = (Q \%*\% DT$Yield)[best,]; qa 
 qDq = Q[best,] \%*\% A \%*\% Q[best,]; qDq 
 sum(Q[best,]) # total # of inds selected

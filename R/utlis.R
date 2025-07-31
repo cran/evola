@@ -9,7 +9,7 @@
     stop("This package requires R 3.5.0 or later")
   if(interactive()) {
     packageStartupMessage(blue(paste("[]==================================================================[]")),appendLF=TRUE)
-    packageStartupMessage(blue(paste("[] Evolutionary Algorithm in R (evola) 1.0.5 (2025-04)              []",sep="")),appendLF=TRUE)
+    packageStartupMessage(blue(paste("[] Evolutionary Algorithm in R (evola) 1.0.6 (2025-08)              []",sep="")),appendLF=TRUE)
     packageStartupMessage(paste0(blue("[] Author: Giovanny Covarrubias-Pazaran",paste0(bgGreen(white(" ")), bgWhite(magenta("*")), bgRed(white(" "))),"                        []")),appendLF=TRUE)
     packageStartupMessage(blue("[] Dedicated to the University of Chapingo and UW-Madison           []"),appendLF=TRUE)
     packageStartupMessage(blue("[] Type 'vignette('evola.intro')' for a short tutorial              []"),appendLF=TRUE)
@@ -53,11 +53,16 @@ addZeros<- function (x, nr=2) {
 ocsFun <- function (Y, b, Q, D, a, lambda, scaled=TRUE) {
   # (q'a)b - l(q'Dq)
   if(scaled){
-    return( stan( apply(Y,2,scale) %*% b) -  lambda*stan( Matrix::diag(Q %*% Matrix::tcrossprod(D, Q)) ) )
+    Yb <- apply(Y,2,function(x){
+      if(var(x)>0){return(scale(x))}else{return(x*0)}
+    }) %*% b
   }else{
-    return( stan( Y %*% b) -  lambda*stan( Matrix::diag(Q %*% Matrix::tcrossprod(D, Q)) ) )
-    # return( stan( (Q%*%a) %*% b) -  lambda*stan( Matrix::diag(Q %*% Matrix::tcrossprod(D, Q)) ) )
+    Yb <- Y %*% b
   }
+  QtDQ <- Matrix::diag(Q %*% Matrix::tcrossprod(D, Q))
+  if(var(Yb) > 0){Yb <- stan(Yb)}
+  if(var(QtDQ) > 0){QtDQ <- stan(QtDQ)}
+  return( Yb -  lambda*QtDQ )
 }
 
 regFun <- function (Y, b, Q, D, a, lambda, X, y) {
@@ -145,8 +150,7 @@ Jr <- function(nr){
   matrix(1,nrow=nr,ncol=1)
 }
 
-bestSol <- function (object, selectTop = TRUE, n = 1) 
-{
+bestSol <- function (object, selectTop = TRUE, n = 1){
   if (!inherits(object, c("Pop", "evolaMod"))) {
     stop("Object of type Pop or evolaMod expected", call. = FALSE)
   }
@@ -322,3 +326,40 @@ importHaploSparse <- function (haplo, genMap, ploidy = 2L, ped = NULL)
   return(founderPop)
 }
 
+drift <- function(pop, simParam, solution=NULL, traits=1){
+  # traits <- 1:simParam$nTraits
+  currentFreqPositive <- list()
+  for(iTrait in traits){ # iTrait=1
+    if(is.null(solution)){
+      alpha = simParam$traits[[iTrait]]@addEff
+      Qtl = pullQtlGeno(pop, simParam = simParam, trait = iTrait)
+    }else{ # user provided a solution model
+      alpha = solution@gv[[iTrait]]@addEff
+      Qtl = pullSnpGeno(pop, simParam = simParam)
+    }
+    m = matrix(0,nrow=1,ncol=3); colnames(m) <- c(0,1,2)
+    freqsG = apply(Qtl,2,function(x){
+      tt = table(x)
+      m[,names(tt)] = tt
+      return(m)
+    })
+    freqsG = freqsG/apply(freqsG,2,sum)
+    rownames(freqsG) <- 0:2
+    freqsA = apply(freqsG,2, function(x){
+      matrix(c( x[1]+(0.5*x[2]), x[3]+(0.5*x[2]) ), nrow = 1, ncol=2)
+    })
+    rownames(freqsA) <- c(0,2)
+    desiredAllele = ifelse( sign(alpha) > 0 , 2, 0 )
+    prov <- sapply(1:length(desiredAllele), function(x){freqsA[as.character(desiredAllele[x]) ,x]})
+    
+    if(is.null(solution)){
+      out <- cbind(getQtlMap(trait = iTrait, simParam=simParam), desiredAllele,prov)
+    }else{
+      out <- cbind( getSnpMap(snpChip = 1, simParam = simParam), desiredAllele,prov)
+    }
+    rownames(out) <- colnames(Qtl) ; colnames(out) <- c("id","chr","ss","pos","a+","freq")
+    currentFreqPositive[[iTrait]] <- out
+  }
+  names(currentFreqPositive) <- simParam$traitNames[traits]
+  return(currentFreqPositive)
+}
