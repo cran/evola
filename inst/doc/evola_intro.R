@@ -32,7 +32,7 @@ res0<-evolafit(cbind(Weight,Value)~Color, dt= Gems,
                propSelBetween = .9, propSelWithin =0.9, 
                nGenerations = 15, verbose = FALSE
 ) 
-pmonitor(res0)
+evolmonitor(res0)
 
 ## -----------------------------------------------------------------------------
 # index for the best solution for trait Value
@@ -44,8 +44,11 @@ Q[best,]
 qa = Q[best,] %*% as.matrix(Gems[,c("Weight","Value")]); qa
 
 ## ----fig.show='hold'----------------------------------------------------------
-data(DT_cpdata)
+data(DT_cpdata, package="enhancer")
 DT <- DT_cpdata
+DT$occ <- 1
+DT$Yield <- imputev(DT$Yield)
+A <- A.matr(GT_cpdata)
 head(DT)
 
 ## ----fig.show='hold'----------------------------------------------------------
@@ -71,17 +74,21 @@ best = bestSol(res$pop)[,"Yield"];
 sum(Q[best,]) # total # of inds selected
 
 ## ----fig.show='hold'----------------------------------------------------------
-pmonitor(res)
+evolmonitor(res)
 plot(DT$Yield, col=as.factor(Q[best,]), 
      pch=(Q[best,]*19)+1)
 
 
 ## -----------------------------------------------------------------------------
-data(DT_technow)
+data(DT_technow, package="enhancer")
 DT <- DT_technow
 DT$occ <- 1; DT$occ[1]=0
-M <- M_technow
-D <- A.mat(M)
+Md <- apply(Md_technow,2,as.numeric)
+rownames(Md) <- rownames(Md_technow)
+Mf <- apply(Mf_technow,2,as.numeric)
+rownames(Mf) <- rownames(Mf_technow)
+M <- rbind(Md,Mf)
+D <- A.matr(M)
 head(DT)
 
 ## -----------------------------------------------------------------------------
@@ -107,12 +114,12 @@ head(DT)
 # sum(Q[best,]) # total # of inds selected
 
 ## -----------------------------------------------------------------------------
-# pmonitor(res)
+# evolmonitor(res)
 # plot(DT$GY, col=as.factor(Q[best,]), 
 #        pch=(Q[best,]*19)+1)
 
 ## -----------------------------------------------------------------------------
-data(DT_wheat)
+data(DT_wheat, package="enhancer")
 DT <- as.data.frame(DT_wheat)
 DT$id <- rownames(DT) # IDs
 DT$occ <- 1; DT$occ[1]=0 # to track occurrences
@@ -202,11 +209,17 @@ plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, cex=cex,
      pch = TreeWheat, xlab = "pc1", ylab = "pc2")
 
 ## -----------------------------------------------------------------------------
-data(DT_technow)
+data(DT_technow, package="enhancer")
 DT <- DT_technow
 DT$occ <- 1; DT$occ[1]=0
-M <- M_technow
-D <- A.mat(M)
+
+Md <- apply(Md_technow,2,as.numeric)
+rownames(Md) <- rownames(Md_technow)
+Mf <- apply(Mf_technow,2,as.numeric)
+rownames(Mf) <- rownames(Mf_technow)
+M <- rbind(Md,Mf)
+
+D <- A.matr(M)
 
 Z=with(DT,overlay(dent,flint) )#  Matrix::sparse.model.matrix(~dent-1, data=DT)
 rownames(Z) <- DT$hy # needed to link to the QTL matrix
@@ -269,77 +282,77 @@ fitnessf <-function (Y, b, Q, D, a, lambda, scale=TRUE, Z) {
 
 ## -----------------------------------------------------------------------------
 
-data("mtcars")
-# we scale the variables
-mtcars <- as.data.frame(apply(mtcars,2,scale))
-mtcars$inter <- 1 # add an intercept if desired
-
-# define the train and validation set
-train <- sample(1:nrow(mtcars) , round((nrow(mtcars)*.4)))
-validate <- setdiff(1:nrow(mtcars),train)
-mtcarsT <- mtcars[train,]
-mtcarsV <- mtcars[validate,]
-
-##############################
-# fit the regular linear model
-head(mtcarsT)
-mod <- lm(mpg~cyl+disp+hp+drat, data=mtcarsT);mod
-
-##############################
-# fit the genetic algorithm
-# 1) create initial QTL effects to evolve
-nqtls=100
-dt <- data.frame(alpha=rnorm(nqtls,0,.3),qtl=paste0("Q",1:nqtls))
-head(dt); nrow(dt)
-
-# generate n samples equivalent to the number of progeny
-# you are planning to start the simulation with (e.g., 500)
-# these are fixed values
-sam <- sample(1:nrow(mtcarsT),500,replace = TRUE)
-y <- mtcarsT$mpg[sam]
-X = mtcarsT[sam,c("cyl","disp","hp","drat")]
-
-# Task: linear regression
-res0<-evolafit(alpha~qtl, dt= dt,
-               # constraints: if greater than this ignore
-               constraintsUB = c(Inf), 
-               # constraints: if smaller than this ignore
-               constraintsLB= c(-Inf), 
-               # weight the traits for the selection
-               b = c(1), 
-               # population parameters
-               nCrosses = 50, nProgeny = 10, recombGens = 1, 
-               # coancestry parameters
-               D=NULL, lambda=0, nQtlStart = 4, fixNumQtlPerInd = TRUE,
-               # least MSE function (y - Xb)^2; Y are betas; X*Y is X*beta; 
-               # Y and X are fixed, we just evolve the betas
-               fitnessf=regFun,
-               # selection parameters
-               propSelBetween = 0.65, propSelWithin =0.65, selectTop=FALSE,
-               nGenerations = 10, y=y, X=X, verbose = FALSE
-) 
-
-# check how the fitness function changed across generations
-pmonitor(res0, kind = 1)
-# this time the best solution is the one that minimizes the error
-Q <- pullQtlGeno(res0$pop, simParam = res0$simParam, trait=1); Q <- Q/2
-bestid <- bestSol(res0$pop, selectTop = FALSE)[,"fitness"]
-bestid
-betas <- res0$simParam$traits[[1]]@addEff[which(Q[bestid,] > 0)]
-betas
-
-# plot predicted versus real values
-plot( as.matrix(mtcarsV[,c("cyl","disp","hp","drat")]) %*% betas  , mtcarsV$mpg,
-      xlab="predicted mpg value by GA", ylab="mpg",
-      main="Correlation between GA-prediction and observed") # GA
-plot( as.matrix(mtcarsV[,c("inter","cyl","disp","hp","drat")]) %*% mod$coefficients , mtcarsV$mpg,
-      xlab="predicted mpg value by lm", ylab="mpg",
-      main="Correlation between lm-prediction and observed") # LM
-# Correlation between GA-prediction and observed 
-cor( as.matrix(mtcarsV[,c("cyl","disp","hp","drat")]) %*% betas  , mtcarsV$mpg) 
-# Correlation between lm-prediction and observed
-cor( as.matrix(mtcarsV[,c("inter","cyl","disp","hp","drat")]) %*% mod$coefficients , mtcarsV$mpg) # LM
-
+# data("mtcars")
+# # we scale the variables
+# mtcars <- as.data.frame(apply(mtcars,2,scale))
+# mtcars$inter <- 1 # add an intercept if desired
+# 
+# # define the train and validation set
+# train <- sample(1:nrow(mtcars) , round((nrow(mtcars)*.4)))
+# validate <- setdiff(1:nrow(mtcars),train)
+# mtcarsT <- mtcars[train,]
+# mtcarsV <- mtcars[validate,]
+# 
+# ##############################
+# # fit the regular linear model
+# head(mtcarsT)
+# mod <- lm(mpg~cyl+disp+hp+drat, data=mtcarsT);mod
+# 
+# ##############################
+# # fit the genetic algorithm
+# # 1) create initial QTL effects to evolve
+# nqtls=100
+# dt <- data.frame(alpha=rnorm(nqtls,0,.3),qtl=paste0("Q",1:nqtls))
+# head(dt); nrow(dt)
+# 
+# # generate n samples equivalent to the number of progeny
+# # you are planning to start the simulation with (e.g., 500)
+# # these are fixed values
+# sam <- sample(1:nrow(mtcarsT),500,replace = TRUE)
+# y <- mtcarsT$mpg[sam]
+# X = mtcarsT[sam,c("cyl","disp","hp","drat")]
+# 
+# # Task: linear regression
+# res0<-evolafit(alpha~qtl, dt= dt,
+#                # constraints: if greater than this ignore
+#                constraintsUB = c(Inf), 
+#                # constraints: if smaller than this ignore
+#                constraintsLB= c(-Inf), 
+#                # weight the traits for the selection
+#                b = c(1), 
+#                # population parameters
+#                nCrosses = 50, nProgeny = 10, recombGens = 1, 
+#                # coancestry parameters
+#                D=NULL, lambda=0, nQtlStart = 4, fixNumQtlPerInd = TRUE,
+#                # least MSE function (y - Xb)^2; Y are betas; X*Y is X*beta; 
+#                # Y and X are fixed, we just evolve the betas
+#                fitnessf=regFun,
+#                # selection parameters
+#                propSelBetween = 0.65, propSelWithin =0.65, selectTop=FALSE,
+#                nGenerations = 10, y=y, X=X, verbose = FALSE
+# ) 
+# 
+# # check how the fitness function changed across generations
+# evolmonitor(res0, kind = 1)
+# # this time the best solution is the one that minimizes the error
+# Q <- pullQtlGeno(res0$pop, simParam = res0$simParam, trait=1); Q <- Q/2
+# bestid <- bestSol(res0$pop, selectTop = FALSE)[,"fitness"]
+# bestid
+# betas <- res0$simParam$traits[[1]]@addEff[which(Q[bestid,] > 0)]
+# betas
+# 
+# # plot predicted versus real values
+# plot( as.matrix(mtcarsV[,c("cyl","disp","hp","drat")]) %*% betas  , mtcarsV$mpg,
+#       xlab="predicted mpg value by GA", ylab="mpg",
+#       main="Correlation between GA-prediction and observed") # GA
+# plot( as.matrix(mtcarsV[,c("inter","cyl","disp","hp","drat")]) %*% mod$coefficients , mtcarsV$mpg,
+#       xlab="predicted mpg value by lm", ylab="mpg",
+#       main="Correlation between lm-prediction and observed") # LM
+# # Correlation between GA-prediction and observed 
+# cor( as.matrix(mtcarsV[,c("cyl","disp","hp","drat")]) %*% betas  , mtcarsV$mpg) 
+# # Correlation between lm-prediction and observed
+# cor( as.matrix(mtcarsV[,c("inter","cyl","disp","hp","drat")]) %*% mod$coefficients , mtcarsV$mpg) # LM
+# 
 
 
 ## -----------------------------------------------------------------------------
@@ -413,7 +426,7 @@ df2
 
 
 ## -----------------------------------------------------------------------------
-H <- with(df2, evola::overlay(Var1,Var2) )
+H <- with(df2, overlay(Var1,Var2) )
 rownames(H) <- df2$route
 head(H)
 
@@ -462,12 +475,48 @@ res<-evolafit(formula=distances~route, dt= df2,
               nGenerations = 50, verbose=FALSE
 ) 
 
-pmonitor(res, kind=1) # fitness should decrease
+evolmonitor(res, kind=1) # fitness should decrease
 Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
 best <- bestSol(res$pop, selectTop = FALSE)[,"fitness"]
 Q[best,] # routes taken
 Q[best,] %*% H # cities visited (should have a 2 so we arrived and left once)
 
 plotCities(cities, route=Q[best,])
+
+
+## -----------------------------------------------------------------------------
+
+set.seed(1)
+# Data
+Gems <- data.frame(
+  Color = c("Red", "Blue", "Purple", "Orange",
+            "Green", "Pink", "White", "Black", 
+            "Yellow"),
+  Weight = round(runif(9,0.5,5),2),
+  Value = round(abs(rnorm(9,0,5))+0.5,2),
+  Times=c(rep(1,8),0)
+)
+
+# create initial haplotypes where all are the same solution so the breeding program won't evolve
+# only when variability exist evolution can happen
+av <- 1:nrow(Gems)
+Ne=5
+haplo = matrix(as.raw(0), nrow= Ne*2, ncol = nrow(Gems)) # rbind( diag(nrow(dt)), diag(nrow(dt)) )
+for (i in seq(1,nrow(haplo),2)) {
+  haplo[i,c(1,3)] <- as.raw(1)
+  haplo[(i+1),] <- haplo[i,]
+}
+haplo
+
+# simple specification
+res00<-evolafit(formula=cbind(Weight,Value)~Color, dt= Gems,
+                # constraints on traits: if greater than this ignore
+                constraintsUB = c(10,Inf), nGenerations = 10, 
+                haplo=haplo
+)
+best = bestSol(res00$pop)[,"fitness"]
+Q <- pullQtlGeno(res00$pop, simParam = res00$simParam, trait=1); Q <- Q/2
+qa = Q[best,] %*% as.matrix(Gems[,c("Weight","Value")]); qa
+Q[best,] # only possible solution
 
 

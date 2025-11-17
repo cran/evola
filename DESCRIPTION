@@ -1,6 +1,6 @@
 Package: evola
-Version: 1.0.6
-Date: 2025-07-29
+Version: 1.0.7
+Date: 2025-12-01
 Title: Evolutionary Algorithm
 Authors@R: c(
     person("Giovanny","Covarrubias-Pazaran", email="cova_ruber@live.com.mx", role=c("aut","cre"),
@@ -9,9 +9,8 @@ Authors@R: c(
 Maintainer: Giovanny Covarrubias-Pazaran <cova_ruber@live.com.mx>
 Description: Runs an evolutionary algorithm using the 'AlphaSimR' machinery <doi:10.1093/g3journal/jkaa017> .
 Depends: R(>= 3.5.0), AlphaSimR (>= 1.4.2), Matrix (>= 1.0), methods,
-        crayon
+        crayon, enhancer
 LazyLoad: yes
-LazyData: yes
 License: GPL (>= 2)
 Author: Giovanny Covarrubias-Pazaran [aut, cre] (ORCID:
     <https://orcid.org/0000-0002-7194-3837>)
@@ -20,5 +19,5 @@ Suggests: rmarkdown, knitr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2025-07-30 23:56:39 UTC; giovannycovarrubias
-Date/Publication: 2025-07-31 04:00:02 UTC
+Packaged: 2025-11-17 17:33:32 UTC; giovannycovarrubias
+Date/Publication: 2025-11-17 15:00:15 UTC
