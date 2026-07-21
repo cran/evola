@@ -54,25 +54,25 @@ head(Gems)
 The task to optimize here is to be able to pick in your bag all the possible gems (explanatory variable) that maximize the Value (response variable) with the constraint (Weight) that your bag would break after 10Kg. In the evolafit function this would be specified as follows:
 
 ```{r}
-# Task: Gem selection. 
-# Aim: Get highest combined value.
-# Restriction: Max weight of the gem combined = 10. 
-res0<-evolafit(cbind(Weight,Value)~Color, dt= Gems,
-               # constraints: if greater than this ignore
-               constraintsUB = c(10,Inf), 
-               # constraints: if smaller than this ignore
-               constraintsLB= c(-Inf,-Inf), 
-               # weight the traits for the selection
-               b = c(0,1), 
-               # population parameters
-               nCrosses = 100, nProgeny = 20, recombGens = 1, 
-               # coancestry parameters
-               D=NULL, lambda=0, nQtlStart = 1, 
-               # selection parameters
-               propSelBetween = .9, propSelWithin =0.9, 
-               nGenerations = 15, verbose = FALSE
-) 
-evolmonitor(res0)
+# # Task: Gem selection. 
+# # Aim: Get highest combined value.
+# # Restriction: Max weight of the gem combined = 10. 
+# res0<-evolafit(cbind(Weight,Value)~Color, dt= Gems,
+#                # constraints: if greater than this ignore
+#                constraintsUB = c(10,Inf), 
+#                # constraints: if smaller than this ignore
+#                constraintsLB= c(-Inf,-Inf), 
+#                # weight the traits for the selection
+#                b = c(0,1), 
+#                # population parameters
+#                nCrosses = 100, nProgeny = 20, recombGens = 1, 
+#                # coancestry parameters
+#                D=NULL, lambda=0, nQtlStart = 1, 
+#                # selection parameters
+#                propSelBetween = .9, propSelWithin =0.9, 
+#                nGenerations = 15, verbose = FALSE
+# ) 
+# evolmonitor(res0)
 ```
 
 Notice that the formula cbind(Weight,Value)~Color specifies the traits to be considered in the optimization problem and are indicated in the left side of the formula whereas the right side of the formula specifies the term corresponding to the genes that will form the 'genome' of the possible solutions (progeny). Each trait in the formula requires a value for the constraints, weights in the fitness function (e.g., a selection index or any other customized fitness function). Please notice that the default fitness function is a classical base selection index. In this example only Value contributes to the fitness and Weight is purely used as a constraint. Lambda (weight for the group relationship between the genes in the genome; equivalent to the linkage disequilibrium). The rest of the parameters are the parameters controlling the evolution of the population of solutions.
@@ -80,13 +80,13 @@ Notice that the formula cbind(Weight,Value)~Color specifies the traits to be con
 When looking at the results of the evolution we can observe that the best solution for the traits under the contraints can be extracted with the bestSol() function.
 
 ```{r}
-# index for the best solution for trait Value
-best=bestSol(res0$pop)[,"Value"]; best 
-# actual solution
-Q <- pullQtlGeno(res0$pop, simParam = res0$simParam, trait=1); Q <- Q/2
-Q[best,] 
-# value and weight for the selected solution 
-qa = Q[best,] %*% as.matrix(Gems[,c("Weight","Value")]); qa
+# # index for the best solution for trait Value
+# best=bestSol(res0$pop)[,"Value"]; best 
+# # actual solution
+# Q <- pullQtlGeno(res0$pop, simParam = res0$simParam, trait=1); Q <- Q/2
+# Q[best,] 
+# # value and weight for the selected solution 
+# qa = Q[best,] %*% as.matrix(Gems[,c("Weight","Value")]); qa
 ```
 
 The best selection of Gems was the one one found in the M element of the resulting object.
@@ -109,37 +109,37 @@ head(DT)
 Our surrogate of fitness will be the Yield trait and we will have a second trait to control the number of individuals we can select. We will set a constraint for the occurrence (occ) trait to 20 but the only trait contributing to fitness will be Yield (using the b argument). 
 
 ```{r, fig.show='hold'}
-# get best 20 individuals weighting variance by 0.5
-res<-evolafit(cbind(Yield, occ)~id, dt= DT, 
-              # constraints: if sum is greater than this ignore 
-              constraintsUB = c(Inf,20), 
-              # constraints: if sum is smaller than this ignore
-              constraintsLB= c(-Inf,-Inf), 
-              # weight the traits for the selection
-              b = c(1,0), 
-              # population parameters
-              nCrosses = 100, nProgeny = 10, 
-              # coancestry parameters
-              D=A, lambda= (30*pi)/180 , nQtlStart = 2, 
-              # selection parameters
-              propSelBetween = 0.5, propSelWithin =0.5, 
-              nGenerations = 15, verbose=FALSE) 
+# # get best 20 individuals weighting variance by 0.5
+# res<-evolafit(cbind(Yield, occ)~id, dt= DT, 
+#               # constraints: if sum is greater than this ignore 
+#               constraintsUB = c(Inf,20), 
+#               # constraints: if sum is smaller than this ignore
+#               constraintsLB= c(-Inf,-Inf), 
+#               # weight the traits for the selection
+#               b = c(1,0), 
+#               # population parameters
+#               nCrosses = 100, nProgeny = 10, 
+#               # coancestry parameters
+#               D=A, lambda= (30*pi)/180 , nQtlStart = 2, 
+#               # selection parameters
+#               propSelBetween = 0.5, propSelWithin =0.5, 
+#               nGenerations = 15, verbose=FALSE) 
 ```
 
 We then use the bestSol() function to extract the solution that maximized our fitness function and constraints.
 
 ```{r, fig.show='hold'}
-Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
-best = bestSol(res$pop)[,"Yield"];
-sum(Q[best,]) # total # of inds selected
+# Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
+# best = bestSol(res$pop)[,"Yield"];
+# sum(Q[best,]) # total # of inds selected
 ```
 
 We can use the evolmonitor() function to see if convergence was achieved between the best and the average solutions.
 
 ```{r, fig.show='hold'}
-evolmonitor(res)
-plot(DT$Yield, col=as.factor(Q[best,]), 
-     pch=(Q[best,]*19)+1)
+# evolmonitor(res)
+# plot(DT$Yield, col=as.factor(Q[best,]), 
+#      pch=(Q[best,]*19)+1)
 
 ```
 
@@ -242,35 +242,35 @@ DT2 <- DT[rownames(As),]
 For this particular case there is no trait to optimize (x'a) but we just want to make sure that we maintain as much variation in the sample as possible (x'Ax). We then just create a dummy trait in the dataset (dummy) to put all the weight into the group relationship (x'Ax) using the lambda argument. The trait for occurrence we will use it as before to control the number of individuals to be in the sample. 
 
 ```{r}
-res<-evolafit(cbind(dummy, occ)~id, dt= DT2, 
-                # constraints: if sum is greater than this ignore 
-                constraintsUB = c(Inf, 100), 
-                # constraints: if sum is smaller than this ignore
-                constraintsLB= c(-Inf, -Inf), 
-                # weight the traits for the selection
-                b = c(1,0), 
-                # population parameters
-                nCrosses = 100, nProgeny = 10, 
-                # coancestry parameters
-                D=As,
-                lambda=(60*pi)/180, nQtlStart = 80, 
-                # selection parameters
-                propSelBetween = 0.5, propSelWithin =0.5, 
-                nGenerations = 15, verbose = FALSE)
-
-Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
-best = bestSol(res$pop)[,1]
-sum(Q[best,]) # total # of inds selected
+# res<-evolafit(cbind(dummy, occ)~id, dt= DT2, 
+#                 # constraints: if sum is greater than this ignore 
+#                 constraintsUB = c(Inf, 100), 
+#                 # constraints: if sum is smaller than this ignore
+#                 constraintsLB= c(-Inf, -Inf), 
+#                 # weight the traits for the selection
+#                 b = c(1,0), 
+#                 # population parameters
+#                 nCrosses = 100, nProgeny = 10, 
+#                 # coancestry parameters
+#                 D=As,
+#                 lambda=(60*pi)/180, nQtlStart = 80, 
+#                 # selection parameters
+#                 propSelBetween = 0.5, propSelWithin =0.5, 
+#                 nGenerations = 15, verbose = FALSE)
+# 
+# Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
+# best = bestSol(res$pop)[,1]
+# sum(Q[best,]) # total # of inds selected
 ```
 
 You can see which individuals were selected.
 
 ```{r}
-cex <- rep(0.5,nrow(PCWheat))
-names(cex) <- rownames(PCWheat)
-cex[names(which(Q[best,]==1))]=2
-plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, cex=cex,
-     pch = TreeWheat, xlab = "pc1", ylab = "pc2")
+# cex <- rep(0.5,nrow(PCWheat))
+# names(cex) <- rownames(PCWheat)
+# cex[names(which(Q[best,]==1))]=2
+# plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, cex=cex,
+#      pch = TreeWheat, xlab = "pc1", ylab = "pc2")
 ```
 
 ### 3b) Optimizing a subsample of size N to be representative of another population
@@ -284,35 +284,35 @@ DT2$cov <- apply(D[tp,vp],1,mean)
 The model can be specified as before with the suttle difference that the covariance between the training and validation population contributes to the fitness function.
 
 ```{r}
-res<-evolafit(cbind(cov, occ)~id, dt= DT2, 
-                # constraints: if sum is greater than this ignore 
-                constraintsUB = c(Inf, 100), 
-                # constraints: if sum is smaller than this ignore
-                constraintsLB= c(-Inf, -Inf), 
-                # weight the traits for the selection
-                b = c(1,0), 
-                # population parameters
-                nCrosses = 100, nProgeny = 10, 
-                # coancestry parameters
-                D=As,
-                lambda=(60*pi)/180, nQtlStart = 80, 
-                # selection parameters
-                propSelBetween = 0.5, propSelWithin =0.5, 
-                nGenerations = 15, verbose = FALSE)
-
-Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
-best = bestSol(res$pop)[,1]
-sum(Q[best,]) # total # of inds selected
+# res<-evolafit(cbind(cov, occ)~id, dt= DT2, 
+#                 # constraints: if sum is greater than this ignore 
+#                 constraintsUB = c(Inf, 100), 
+#                 # constraints: if sum is smaller than this ignore
+#                 constraintsLB= c(-Inf, -Inf), 
+#                 # weight the traits for the selection
+#                 b = c(1,0), 
+#                 # population parameters
+#                 nCrosses = 100, nProgeny = 10, 
+#                 # coancestry parameters
+#                 D=As,
+#                 lambda=(60*pi)/180, nQtlStart = 80, 
+#                 # selection parameters
+#                 propSelBetween = 0.5, propSelWithin =0.5, 
+#                 nGenerations = 15, verbose = FALSE)
+# 
+# Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
+# best = bestSol(res$pop)[,1]
+# sum(Q[best,]) # total # of inds selected
 ```
 
 You can plot the final results and see which individuals were picked.
 
 ```{r}
-cex <- rep(0.5,nrow(PCWheat))
-names(cex) <- rownames(PCWheat)
-cex[names(which(Q[best,]==1))]=2
-plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, cex=cex,
-     pch = TreeWheat, xlab = "pc1", ylab = "pc2")
+# cex <- rep(0.5,nrow(PCWheat))
+# names(cex) <- rownames(PCWheat)
+# cex[names(which(Q[best,]==1))]=2
+# plot(PCWheat[,1], PCWheat[,2], col = TreeWheat, cex=cex,
+#      pch = TreeWheat, xlab = "pc1", ylab = "pc2")
 ```
 
 ### 6) How to specify constraints
@@ -603,37 +603,37 @@ salesf <- function(Y,b,Q,D,a,lambda ,H, nCities){
 With the fitness function defined now we can fit the genetic algorithm:
 
 ```{r}
-res<-evolafit(formula=distances~route, dt= df2,
-              # constraints on traits: if greater than this ignore
-              constraintsUB = c(Inf), 
-              # constraints on traits: if smaller than this ignore
-              constraintsLB= c(-Inf), 
-              # weight the traits for the selection (fitness function)
-              b = c(1), 
-              # population parameters
-              nCrosses = 50, nProgeny = 10, 
-              # genome parameters
-              recombGens = 1, nChr=1, mutRateAllele=0, 
-              # start with at least n QTLs equivalent to n cities
-              nQtlStart = nCities*2, 
-              # coancestry parameters
-              D=NULL, lambda=0, 
-              fitnessf = salesf, 
-              selectTop = FALSE, 
-              # additional variables for the fitness function
-              H=H, nCities=nCities,
-              # selection parameters
-              # propSelBetween = .8, propSelWithin =0.8, 
-              nGenerations = 50, verbose=FALSE
-) 
-
-evolmonitor(res, kind=1) # fitness should decrease
-Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
-best <- bestSol(res$pop, selectTop = FALSE)[,"fitness"]
-Q[best,] # routes taken
-Q[best,] %*% H # cities visited (should have a 2 so we arrived and left once)
-
-plotCities(cities, route=Q[best,])
+# res<-evolafit(formula=distances~route, dt= df2,
+#               # constraints on traits: if greater than this ignore
+#               constraintsUB = c(Inf), 
+#               # constraints on traits: if smaller than this ignore
+#               constraintsLB= c(-Inf), 
+#               # weight the traits for the selection (fitness function)
+#               b = c(1), 
+#               # population parameters
+#               nCrosses = 50, nProgeny = 10, 
+#               # genome parameters
+#               recombGens = 1, nChr=1, mutRateAllele=0, 
+#               # start with at least n QTLs equivalent to n cities
+#               nQtlStart = nCities*2, 
+#               # coancestry parameters
+#               D=NULL, lambda=0, 
+#               fitnessf = salesf, 
+#               selectTop = FALSE, 
+#               # additional variables for the fitness function
+#               H=H, nCities=nCities,
+#               # selection parameters
+#               # propSelBetween = .8, propSelWithin =0.8, 
+#               nGenerations = 50, verbose=FALSE
+# ) 
+# 
+# evolmonitor(res, kind=1) # fitness should decrease
+# Q <- pullQtlGeno(res$pop, simParam = res$simParam, trait=1); Q <- Q/2
+# best <- bestSol(res$pop, selectTop = FALSE)[,"fitness"]
+# Q[best,] # routes taken
+# Q[best,] %*% H # cities visited (should have a 2 so we arrived and left once)
+# 
+# plotCities(cities, route=Q[best,])
 
 ```
 
@@ -669,15 +669,15 @@ for (i in seq(1,nrow(haplo),2)) {
 haplo
 
 # simple specification
-res00<-evolafit(formula=cbind(Weight,Value)~Color, dt= Gems,
-                # constraints on traits: if greater than this ignore
-                constraintsUB = c(10,Inf), nGenerations = 10, 
-                haplo=haplo
-)
-best = bestSol(res00$pop)[,"fitness"]
-Q <- pullQtlGeno(res00$pop, simParam = res00$simParam, trait=1); Q <- Q/2
-qa = Q[best,] %*% as.matrix(Gems[,c("Weight","Value")]); qa
-Q[best,] # only possible solution
+# res00<-evolafit(formula=cbind(Weight,Value)~Color, dt= Gems,
+#                 # constraints on traits: if greater than this ignore
+#                 constraintsUB = c(10,Inf), nGenerations = 10, 
+#                 haplo=haplo
+# )
+# best = bestSol(res00$pop)[,"fitness"]
+# Q <- pullQtlGeno(res00$pop, simParam = res00$simParam, trait=1); Q <- Q/2
+# qa = Q[best,] %*% as.matrix(Gems[,c("Weight","Value")]); qa
+# Q[best,] # only possible solution
 
 ```
 

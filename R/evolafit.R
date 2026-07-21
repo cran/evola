@@ -11,7 +11,8 @@ evolafit <- function(formula, dt,
                      includeSet=NULL, excludeSet=NULL, haplo=NULL,
                      ...){
   
-  my.date <- "2026-02-01"
+  desc <- utils::packageDescription("evola")
+  my.date <- as.Date(desc$Date)+120
   your.date <- Sys.Date()
   ## if your month is greater than my month you are outdated
   if(dateWarning & verbose){
@@ -392,6 +393,8 @@ evolafit <- function(formula, dt,
   popEvola@constCheckUB <- constCheckUB
   popEvola@constCheckLB <- constCheckLB
   popEvola@traits <- traits
+  popEvola@qtl <- classifiers
+  popEvola@qtlData <- dt[,c(traits,classifiers)]
   
   ###################
   # Although multiple traits are enabled it is assumed that same QTLs are behind all the traits, differing only in their average allelic effects.

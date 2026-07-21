@@ -32,13 +32,15 @@ Gems <- data.frame(
 # Task: Gem selection. 
 # Aim: Get highest combined value.
 # Restriction: Max weight of the gem combined = 10. 
-
+ \donttest{
 # simple specification
 res<-evolafit(formula=cbind(Weight,Value)~Color, dt= Gems,
                # constraints on traits: if greater than this ignore
                constraintsUB = c(10,Inf), nGenerations = 2
 )
 resUp=update(res)
+}
+
 }
 \keyword{models}
 

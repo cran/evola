@@ -6,14 +6,14 @@ import("methods")
 import("enhancer")
 
 importFrom("grDevices", "as.raster", "col2rgb", "colorRampPalette",
-             "rgb")
+             "rgb", "palette.colors")
 importFrom("graphics", "axis", "grid", "layout", "lines", "points",
              "rasterImage", "text", "legend", "par")
 importFrom("stats", "na.omit", "quantile", "var", "as.formula","model.matrix",
            "median","rnorm", "aggregate","runif","getCall","update.formula",
            "formula")
 
-export( "evolafit", "evolmonitor", "pareto", "varQ", "bestSol", 
+export( "evolafit", "evolmonitor", "pareto", "abq", "varQ", "bestSol", 
         "addZeros", "Jc", "Jr", "freqPosAllele",
         "ocsFun", "ocsFunC", "regFun", "inbFun", "nQtl", "importHaploSparse",
         "drift"

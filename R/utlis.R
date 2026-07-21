@@ -8,8 +8,9 @@
   if(!exists("getRversion", baseenv()) || (getRversion() < "3.5.0"))
     stop("This package requires R 3.5.0 or later")
   if(interactive()) {
+    desc <- utils::packageDescription(pkg)
     packageStartupMessage(blue(paste("[]==================================================================[]")),appendLF=TRUE)
-    packageStartupMessage(blue(paste("[] Evolutionary Algorithm in R (evola) 1.0.7 (2025-12)              []",sep="")),appendLF=TRUE)
+    packageStartupMessage(blue(paste("[] Evolutionary Algorithm in R (evola) ", desc$Version," (", desc$Date, ")           []",sep="")),appendLF=TRUE)
     packageStartupMessage(paste0(blue("[] Author: Giovanny Covarrubias-Pazaran",paste0(bgGreen(white(" ")), bgWhite(magenta("M")), bgRed(white(" ")),"  ", bgRed(bold(yellow(" (") )),bgRed(bold(white("W"))), bgRed(bold(yellow(") "))) ) ,"                 []")),appendLF=TRUE)
     packageStartupMessage(blue("[] Dedicated to the University of Chapingo and UW-Madison           []"),appendLF=TRUE)
     packageStartupMessage(blue("[] Type 'vignette('evola.intro')' for a short tutorial              []"),appendLF=TRUE)

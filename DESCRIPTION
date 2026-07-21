@@ -1,6 +1,6 @@
 Package: evola
-Version: 1.0.7
-Date: 2025-12-01
+Version: 1.0.8
+Date: 2026-07-11
 Title: Evolutionary Algorithm
 Authors@R: c(
     person("Giovanny","Covarrubias-Pazaran", email="cova_ruber@live.com.mx", role=c("aut","cre"),
@@ -19,5 +19,5 @@ Suggests: rmarkdown, knitr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2025-11-17 17:33:32 UTC; giovannycovarrubias
-Date/Publication: 2025-11-17 15:00:15 UTC
+Packaged: 2026-07-21 04:40:16 UTC; giovannycovarrubias
+Date/Publication: 2026-07-21 03:30:02 UTC
