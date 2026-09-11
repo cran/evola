@@ -59,6 +59,8 @@ evolafit <- function(formula, dt,
   if(length(b) != length(traits)){stop(paste0("Weights need to have the same length than traits (",length(traits),")"), call. = FALSE)}
   if(is.null(D)){D <- Matrix::Diagonal(nrow(dt)); useD=FALSE}else{useD=TRUE}
   if(is.null(nQtlStart)){nQtlStart <- ceiling(nrow(dt)/5)}
+  if(nQtlStart > nrow(dt)){stop("The initial number of Qtls activated cannot be larger than the available number of Qtls", call. = FALSE)}
+  message(paste0("Ne = ", Ne,  "; nQtl = ", nrow(dt), "; nQtlStart = ", nQtlStart,"; nChr = ", nChr))
   # check that the user has provided a single value for each QTL
   
   

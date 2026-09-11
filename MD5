@@ -1,8 +1,8 @@
 40e686a4a3a4dcc4c9a54b31238d45eb *ChangeLog
-8eeb733bc1fce4da033f0e8de63ea408 *DESCRIPTION
+69c6ee5de6ab5decb6dda1adfe7c8949 *DESCRIPTION
 e483cf148732e2e6260068932c76049d *NAMESPACE
 a2ad8644d32ed7927758725e983287c2 *R/AllClass.R
-652d386008dda802a665d9f7ac452ac6 *R/evolafit.R
+d3c51bd4e753147bfa0760e6a19e36e8 *R/evolafit.R
 bee7e8b5d1aeba654266cdc333a5bcfc *R/methods.R
 1b7d341a9a21686da6d2706496e4c63c *R/plotting_funs.R
 f2ae4cfb57da4cbecacd40c4f998f738 *R/utlis.R
@@ -10,7 +10,7 @@ f2ae4cfb57da4cbecacd40c4f998f738 *R/utlis.R
 2fc230b10174c99da3473418ae16726c *inst/CITATION
 946ba76cd2fc8150bbca406079bb3a9d *inst/doc/evola_intro.R
 f968e9c85015e234bf7e0b848b74eadf *inst/doc/evola_intro.Rmd
-3d0657ef6b25a4576e58481cec4343e5 *inst/doc/evola_intro.html
+405896afe6477fc3e11b31eea2752646 *inst/doc/evola_intro.html
 729bd82415abd263c76b596a220d960a *man/Jc.Rd
 d08a239dfb4c49b396b3cdc80f4dffc6 *man/Jr.Rd
 0ac6a69307e8043f85e6ab3229b31b09 *man/addZeros.Rd
